@@ -1,26 +1,170 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/**
+ * Vedam School of Technology — brand tokens.
+ * Source: Vedam Brandbook Capsule (Visual Identity).
+ *
+ * CONTRAST RULE, verified with `npm run check:contrast`:
+ *   Vedams Orange (#F97D03) is 2.50:1 on Vedams White — it FAILS as text or as
+ *   a button fill on light surfaces. It is a GRAPHIC colour: the logo mark,
+ *   gradients, fills, and text on dark. Electric Violet is the interactive
+ *   colour on light (5.46:1); Orange is the interactive colour on dark
+ *   (7.25:1 on Cetacean Blue, where Electric Violet fails at 3.33:1).
+ *   In short: violet on light, orange on dark.
+ */
+@theme {
+  /* Primary */
+  --color-orange: #f97d03;
+  --color-eviolet: #8a18ff;
+  --color-violet: #2b135c;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  /* Secondary */
+  --color-night: #0c0931;
+  --color-space: #1d1856;
+  --color-redpurple: #e80074;
+  --color-mulberry: #c200db;
+  --color-turquoise: #00cfe5;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  /* Surfaces. The canvas is a violet-tinted lavender derived from Electric
+     Violet, so white cards float on it the way the reference dashboards do. */
+  --color-canvas: #f4f1fb;
+  --color-paper: #ffffff;
+  --color-paper-alt: #f6f3fe;
+  --color-cream: #f8f3ea;
+  --color-ink: #1e1e1e;
+  --color-grey: #a7a7a7;
+
+  /* Soft, wide, violet-tinted shadows — no hard borders on cards. */
+  --shadow-card: 0 2px 16px -4px rgb(43 19 92 / 0.08), 0 1px 3px rgb(43 19 92 / 0.04);
+  --shadow-card-lg: 0 12px 40px -8px rgb(43 19 92 / 0.16), 0 4px 12px rgb(43 19 92 / 0.06);
+  --shadow-tile: 0 8px 24px -6px rgb(43 19 92 / 0.14);
+
+  /* Derived text greys. Vedams Light Grey is 2.29:1 on white — decorative
+     only, never body text — so readable steps are derived from it. */
+  --color-ink-muted: #5c5c66;
+  --color-ink-faint: #6b6b75;
+  --color-rule: #e6e3ec;
+
+  /* Interactive accent on light surfaces */
+  --color-accent: #8a18ff;
+  --color-accent-soft: #efe3ff;
+
+  /* Text on dark brand surfaces */
+  --color-on-dark: #f9f9f9;
+  --color-on-dark-muted: #a7a7a7;
+
+  --animate-marquee: marquee 45s linear infinite;
+  --animate-pop: pop 0.9s ease-out forwards;
+  --animate-rise: rise 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+
+  /* Celebration when a post is marked live. */
+  @keyframes pop {
+    0%   { transform: translate(-50%, 0) scale(0.4); opacity: 0; }
+    25%  { transform: translate(-50%, -10px) scale(1.15); opacity: 1; }
+    100% { transform: translate(-50%, -30px) scale(1); opacity: 0; }
+  }
+
+  @keyframes rise {
+    from { transform: translateY(6px); opacity: 0; }
+    to   { transform: translateY(0); opacity: 1; }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@theme inline {
+  /* Inter across the board. The "mono" slot is Inter with tabular figures
+     rather than a second family, so digits still align in the calendar. */
+  --font-display: var(--font-inter);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-inter);
+}
+
+@layer base {
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: -0.015em;
+  }
+
+  /* Dates and counts must line up column to column. */
+  table {
+    font-variant-numeric: tabular-nums;
+  }
+
+  ::selection {
+    background-color: var(--color-eviolet);
+    color: var(--color-paper);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-eviolet);
+    outline-offset: 3px;
+  }
+}
+
+@layer utilities {
+  /* The floating white card that everything sits in. */
+  .card {
+    background-color: var(--color-paper);
+    border-radius: 1.5rem;
+    box-shadow: var(--shadow-card);
+  }
+
+  /* Micro label above section headings. */
+  .eyebrow {
+    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-ink-faint);
+  }
+
+  /* Vedams Gradient — orange to electric violet. */
+  .brand-gradient-text {
+    background-image: linear-gradient(
+      100deg,
+      var(--color-orange),
+      var(--color-eviolet)
+    );
+    background-clip: text;
+    color: transparent;
+  }
+
+  .brand-gradient-bg {
+    background-image: linear-gradient(
+      135deg,
+      var(--color-orange) 0%,
+      var(--color-mulberry) 45%,
+      var(--color-eviolet) 100%
+    );
+  }
+
+  /* Dark brand surface used for the hero wash and the CTA band. */
+  .brand-night {
+    background-image: linear-gradient(
+      160deg,
+      var(--color-night) 0%,
+      var(--color-violet) 100%
+    );
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
