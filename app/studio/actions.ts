@@ -127,6 +127,30 @@ export async function saveLiveLink(formData: FormData): Promise<void> {
 // Planning — the two actions that spend money
 // ---------------------------------------------------------------------------
 
+/**
+ * Proves we can persist the result before spending anything on producing it.
+ *
+ * A month costs five model calls and several minutes. Discovering only at the
+ * save that the host's filesystem is read-only — the default state of a Vercel
+ * deployment with no DATABASE_URL — means paying in full for a plan that cannot
+ * be kept. One cheap round trip up front turns that into a clear error and a
+ * zero bill.
+ *
+ * For Postgres this also warms the pool and applies the schema, so the first
+ * real save is not the first time we find out the database is unreachable.
+ */
+async function assertStorageWritable(): Promise<string | null> {
+  try {
+    await store.healthCheck();
+    return null;
+  } catch (err) {
+    logger.error("studio.storage.unavailable", { error: err });
+    return err instanceof Error
+      ? err.message
+      : "The calendar store is not writable, so a plan could not be saved.";
+  }
+}
+
 /** Reads the research fields for one platform out of the form. */
 function researchInput(formData: FormData, platform: Platform) {
   return {
@@ -159,6 +183,10 @@ export async function generateMonth(
   }
 
   const { year, month, brief } = parsed.data;
+
+  // Before anything billable.
+  const storageProblem = await assertStorageWritable();
+  if (storageProblem) return { error: storageProblem };
 
   // Research is best-effort by design and already swallows its own failures;
   // this catch is the outer guarantee that it can never block a plan.
@@ -216,6 +244,10 @@ export async function replanPlatform(
       error: "This month has not been planned yet — plan the full month first.",
     };
   }
+
+  // Reading worked; that does not mean writing will. Check before spending.
+  const storageProblem = await assertStorageWritable();
+  if (storageProblem) return { error: storageProblem };
 
   const research = await gatherResearch([
     researchInput(formData, platform),

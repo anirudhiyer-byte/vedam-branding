@@ -2,7 +2,11 @@ import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { JsonCalendarStore } from "@/lib/social/storage/json-store";
+import {
+  JsonCalendarStore,
+  ReadOnlyFilesystemError,
+  asReadOnlyError,
+} from "@/lib/social/storage/json-store";
 import {
   CalendarNotFoundError,
   ItemNotFoundError,
@@ -191,5 +195,34 @@ describe("normaliseLiveLink", () => {
 
   it("rejects something that is not a URL at all", () => {
     expect(() => normaliseLiveLink("just some text")).toThrow(/does not look like a URL/);
+  });
+});
+
+describe("read-only filesystem", () => {
+  // The exact shape of a Vercel deployment with no DATABASE_URL. Left as a raw
+  // errno this reaches the operator as "EROFS: read-only file system" — after a
+  // multi-minute generation run they have already paid for — with nothing
+  // pointing at the fix.
+  it.each(["EROFS", "EACCES", "EPERM"])(
+    "turns %s into an error that names the fix",
+    (code) => {
+      const errno: NodeJS.ErrnoException = new Error("write failed");
+      errno.code = code;
+
+      const mapped = asReadOnlyError(errno);
+      expect(mapped).toBeInstanceOf(ReadOnlyFilesystemError);
+      expect(mapped!.message).toMatch(/read-only/i);
+      expect(mapped!.message).toMatch(/DATABASE_URL/);
+      // The original errno is preserved for the logs.
+      expect(mapped!.cause).toBe(errno);
+    },
+  );
+
+  it("leaves unrelated errors alone", () => {
+    const missing: NodeJS.ErrnoException = new Error("nope");
+    missing.code = "ENOENT";
+    expect(asReadOnlyError(missing)).toBeNull();
+    expect(asReadOnlyError(new Error("something else"))).toBeNull();
+    expect(asReadOnlyError(undefined)).toBeNull();
   });
 });

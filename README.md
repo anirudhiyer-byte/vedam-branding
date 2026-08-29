@@ -355,6 +355,17 @@ state and the actual entry point to the tool.
 
 ## Deploying
 
+**On Vercel, see [DEPLOYMENT.md](./DEPLOYMENT.md)** — it has the exact
+environment variables and the one non-obvious requirement: the Studio needs a
+Postgres database, because Vercel's filesystem is read-only and the JSON adapter
+cannot write there.
+
+Two things catch that, at different moments. `pnpm run check:env` treats a
+missing `DATABASE_URL` as fatal when it detects Vercel, for a deploy pipeline;
+and both generate actions verify storage is writable *before* making any model
+calls, so the worst case is a clear error and a zero bill rather than paying for
+a month that cannot be saved.
+
 ```bash
 pnpm run check           # typecheck, lint, tests
 pnpm run check:env       # fails if the configuration is not safe to serve

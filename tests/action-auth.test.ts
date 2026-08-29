@@ -84,6 +84,26 @@ describe("studio server actions", () => {
       );
     }
   });
+
+  it("proves storage is writable before spending on model calls", () => {
+    // On a read-only host — a Vercel deployment with no DATABASE_URL — a month
+    // costs five calls and several minutes, then fails on save. Checking first
+    // makes that a clear error and a zero bill.
+    for (const name of ["generateMonth", "replanPlatform"]) {
+      const body = bodyOf(source, name);
+      const check = body.indexOf("assertStorageWritable");
+      const spend = Math.min(
+        ...[body.indexOf("generateCalendar("), body.indexOf("regeneratePlatform(")]
+          .filter((i) => i > -1),
+      );
+
+      expect(check, `${name} never checks storage`).toBeGreaterThan(-1);
+      expect(
+        check,
+        `${name} spends before confirming the result can be saved`,
+      ).toBeLessThan(spend);
+    }
+  });
 });
 
 describe("studio route protection", () => {

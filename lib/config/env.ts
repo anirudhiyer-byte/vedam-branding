@@ -160,6 +160,17 @@ export const isProduction = () => env.NODE_ENV === "production";
 export const isTest = () => env.NODE_ENV === "test";
 
 /**
+ * Whether we are running on Vercel.
+ *
+ * Vercel sets `VERCEL=1` on every deployment. This matters for exactly one
+ * reason: its filesystem is read-only apart from `/tmp`, so the JSON calendar
+ * store cannot work there at all. Detecting the platform lets that be a clear
+ * configuration error at startup rather than an `EROFS` thrown from deep inside
+ * a save, minutes into a generation run the team has already paid for.
+ */
+export const isVercel = () => process.env.VERCEL === "1";
+
+/**
  * Configuration problems that must fail a production deploy loudly rather than
  * surfacing as a confusing 500 on the first request that needs them.
  *
@@ -194,10 +205,24 @@ export function auditEnv(): { fatal: string[]; warnings: string[] } {
     }
 
     if (!env.DATABASE_URL) {
-      warnings.push(
-        "DATABASE_URL is not set, so calendars fall back to JSON files on " +
-          "disk. That does not work on a read-only or multi-instance host.",
-      );
+      // On Vercel this is not a degraded mode, it is a broken one: the
+      // filesystem is read-only outside /tmp, so the very first save throws
+      // and every planned month is lost. Anywhere else it is a real warning
+      // about concurrency and durability, not an outright failure.
+      const message =
+        "DATABASE_URL is not set, so calendars fall back to JSON files on disk.";
+
+      if (isVercel()) {
+        fatal.push(
+          `${message} Vercel's filesystem is read-only, so saving a calendar ` +
+            "will fail and nothing the Studio plans can be kept. Attach a " +
+            "Postgres database and set DATABASE_URL.",
+        );
+      } else {
+        warnings.push(
+          `${message} That does not work on a read-only or multi-instance host.`,
+        );
+      }
     }
   }
 
