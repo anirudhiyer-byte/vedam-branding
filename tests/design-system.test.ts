@@ -143,3 +143,13 @@ describe("fonts", () => {
     expect(readFileSync("app/studio/layout.tsx", "utf8")).toContain("studio-ui");
   });
 });
+
+describe("build scripts", () => {
+  it("generates Next's route types before typechecking", () => {
+    // `PageProps` and `LayoutProps` are emitted by `next typegen`, not written
+    // by hand. Running `tsc --noEmit` without it fails on any fresh checkout —
+    // which is what CI is, and why this passed locally and broke there.
+    const pkg = JSON.parse(readFileSync("package.json", "utf8"));
+    expect(pkg.scripts.typecheck).toContain("next typegen");
+  });
+});
