@@ -14,13 +14,14 @@ export function AdmissionsCta() {
           {admissions.body}
         </p>
 
-        {/* Orange, not violet: on Cetacean Blue orange is 7.25:1 and Electric
-            Violet is 3.33:1. The interactive colour flips on dark surfaces. */}
+        {/* The `onDark` variant, not a className override: the interactive
+            colour flips on dark surfaces, and passing bg-orange alongside the
+            default variant loses to bg-violet on stylesheet order. */}
         <div className="mt-10">
           <CtaLink
             href={`mailto:${site.email}`}
             external
-            className="bg-orange text-night hover:bg-orange/90"
+            variant="onDark"
             size="lg"
           >
             {admissions.cta}

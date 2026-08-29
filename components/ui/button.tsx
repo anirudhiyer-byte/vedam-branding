@@ -11,7 +11,12 @@ import type { ComponentPropsWithoutRef, ReactNode } from "react";
  * variants for one action was not.
  */
 
-export type ButtonVariant = "primary" | "secondary" | "ghost" | "brand";
+export type ButtonVariant =
+  | "primary"
+  | "secondary"
+  | "ghost"
+  | "brand"
+  | "onDark";
 export type ButtonSize = "sm" | "md" | "lg";
 
 const BASE =
@@ -26,6 +31,17 @@ const VARIANTS: Record<ButtonVariant, string> = {
   ghost: "text-ink-muted hover:text-ink",
   // Reserved for the single most important action on a dark or hero surface.
   brand: "brand-gradient-bg text-on-dark shadow-tile hover:-translate-y-0.5",
+  // The primary action on a dark brand surface. Orange, not violet — this is
+  // the "orange on dark" half of the contrast rule, and it is about the button
+  // being *visible*: Vedams Violet is nearly indistinguishable from Cetacean
+  // Blue behind it, while Orange is 7.25:1 against the same ground.
+  //
+  // This is a variant rather than a `className` override on `primary` for a
+  // concrete reason: Tailwind utilities of equal specificity are resolved by
+  // stylesheet order, not by class-attribute order, so `bg-orange` passed
+  // alongside `primary` loses to `bg-violet` and the button silently renders
+  // in the colour the rule forbids. It did exactly that until this existed.
+  onDark: "bg-orange text-night hover:bg-orange/90",
 };
 
 /**

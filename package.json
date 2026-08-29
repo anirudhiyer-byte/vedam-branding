@@ -15,7 +15,8 @@
     "check:env": "node --env-file-if-exists=.env.local --experimental-strip-types --no-warnings scripts/check-env.ts",
     "check:keys": "node --env-file=.env.local --experimental-strip-types --no-warnings scripts/check-keys.ts",
     "check:models": "node --env-file=.env.local --experimental-strip-types --no-warnings scripts/check-models.ts",
-    "db:migrate": "node --env-file=.env.local --experimental-strip-types --no-warnings scripts/migrate.ts"
+    "db:migrate": "node --env-file=.env.local --experimental-strip-types --no-warnings scripts/migrate.ts",
+    "smoke": "node scripts/smoke.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.120.0",
@@ -34,6 +35,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.2",
+    "playwright": "^1.62.1",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.11"

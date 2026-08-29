@@ -80,7 +80,13 @@
   }
 }
 
-@theme inline {
+/* Deliberately NOT `@theme inline`. With `inline`, Tailwind substitutes the
+   resolved value into each utility — `font-display` compiles to Outfit
+   directly — so a scoped redefinition of `--font-display` further down the tree
+   is ignored and the Studio silently renders in the marketing typeface. Plain
+   `@theme` makes the utility emit `var(--font-display)`, which is what lets
+   `.studio-ui` below actually override it. */
+@theme {
   /* The brandbook typefaces: Outfit for display, Nunito Sans for body. The
      "mono" slot is Nunito Sans with tabular figures rather than a second
      family, so digits still align without loading a third font.
