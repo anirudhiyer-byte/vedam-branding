@@ -1,371 +1,392 @@
-# Vedam — brand & design studio
+# Vedam School of Technology
 
-Marketing site for Vedam, built with Next.js 16 (App Router), TypeScript, and
-Tailwind CSS v4.
+Two applications in one Next.js 16 project:
+
+1. **The marketing site** (`/`) — a single scrolling page for Vedam School of
+   Technology, the engineering school offering B.Tech in Computer Science &
+   Artificial Intelligence. Public.
+2. **Content Studio** (`/studio`) — an internal, AI-assisted tool that plans the
+   monthly social calendar and tracks each post through Shoot → Edit → Posted.
+   Password-protected, spends money, and is not linked from the public site.
+
+---
 
 ## Getting started
 
 ```bash
-npm install
-npm run dev
+pnpm install
+cp .env.example .env.local     # then fill it in — see below
+pnpm run check:env             # tells you what is missing and whether it matters
+pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+**pnpm is the package manager.** There was previously both a `package-lock.json`
+and a `pnpm-lock.yaml` in the repo; the npm one has been removed. CI installs
+with `--frozen-lockfile`, so `pnpm-lock.yaml` and `package.json` must agree.
 
-| Script          | Purpose                                |
-| --------------- | -------------------------------------- |
-| `npm run dev`   | Dev server (Turbopack)                 |
-| `npm run build` | Production build                       |
-| `npm start`     | Serve the production build             |
-| `npm run lint`  | ESLint                                 |
+The marketing site works with no configuration at all. The Studio needs
+`STUDIO_PASSWORD` and `STUDIO_SESSION_SECRET` before anyone can sign in, and
+`ANTHROPIC_API_KEY` before it can plan anything.
+
+### Checks
+
+```bash
+pnpm run check           # typecheck + lint + tests. No network, no keys, no DB.
+pnpm test                # 120 tests
+pnpm run check:env       # configuration pre-flight — run before a deploy
+pnpm run check:content   # which content sections are still hidden, and why
+```
+
+Two checks cost money and need credentials, so they are deliberately outside
+`pnpm run check` and outside CI:
+
+```bash
+pnpm run check:keys      # verifies ANTHROPIC_API_KEY and YOUTUBE_API_KEY work
+pnpm run check:models    # verifies each model tier accepts our request shape,
+                         # and that prompt caching is actually happening
+```
+
+`check:models` is worth understanding: it issues each stage's call twice and
+reads `cache_read_input_tokens` back. Prompt caching is the kind of optimisation
+that fails silently — no error, no visible difference, just a larger invoice —
+so it is verified against the live API rather than assumed.
+
+There is also a browser smoke test, run against a built app rather than in CI:
+
+```bash
+pnpm build && pnpm start &
+SMOKE_STUDIO_PASSWORD=... pnpm run smoke
+```
+
+It exists because two real bugs here were invisible to types, lint, tests, and
+the build, since all three concern *computed* CSS that only a browser resolves:
+`@theme inline` silently defeated the Studio's scoped font override, and a
+`className` colour override on a CTA lost to its variant on stylesheet order,
+rendering the button nearly invisible against the band behind it. It also walks
+the whole sign-in flow.
+
+---
 
 ## Project structure
 
 ```
 app/
-  layout.tsx        Root layout — fonts + site metadata
-  page.tsx          Landing page, composes the sections below
-  globals.css       Tailwind import + design tokens
+  page.tsx                 marketing homepage
+  build/[slug]/            a page per student/studio project
+  studio/                  the internal tool
+    login/                 password sign-in
+    actions.ts             every write, each one authenticated
+  robots.ts, sitemap.ts, opengraph-image.tsx
+  error.tsx, not-found.tsx
+
+proxy.ts                   route guard for /studio (Next 16 renamed
+                           middleware.ts to proxy.ts)
+
 components/
-  container.tsx     Shared page gutter
-  wordmark.tsx      Text logo
-  site-header.tsx   Sticky nav (client component — mobile menu state)
-  site-footer.tsx
-  sections/         Hero, marquee, services, work, process, testimonial, CTA
+  ui/button.tsx            the one CTA/button style
+  sections/                marketing page sections
+  studio/                  dashboard components
+    icons.tsx              the single stroke-SVG icon set
+
 lib/
-  content.ts        All site copy and project data
+  config/env.ts            every environment variable, validated once
+  observability/logger.ts  structured logs with secret redaction
+  auth/                    sessions, the per-action guard, rate limiting
+  ai/                      models, pricing, caching, budget, retries
+  content/                 all site copy
+    pending.ts             content only Vedam can supply (see below)
+  social/
+    strategy/              the standing brief the strategist reads
+    agent/                 the planning pipeline
+    insights/              channel + competitor research
+    storage/               Postgres and JSON adapters
+
+tests/                     120 tests, all offline
 ```
-
-## Editing content
-
-Copy is deliberately kept out of the components. Almost every text change —
-nav links, services, case studies, testimonial, contact email — is made in
-[`lib/content.ts`](lib/content.ts).
-
-## Brand theme
-
-The palette and type come from the **Vedam Brandbook Capsule**. Tokens live in
-[app/globals.css](app/globals.css) and are used as ordinary Tailwind utilities
-(`bg-paper`, `text-ink-muted`, `bg-violet`, `text-orange`).
-
-| Role | Token | Value |
-| --- | --- | --- |
-| Primary | `orange` | `#F97D03` Vedams Orange |
-| | `eviolet` / `accent` | `#8A18FF` Electric Violet |
-| | `violet` | `#2B135C` Vedams Violet |
-| Secondary | `night` | `#0C0931` Cetacean Blue |
-| | `space` | `#1D1856` Space Cadet |
-| | `redpurple` | `#E80074` |
-| | `mulberry` | `#C200DB` |
-| | `turquoise` | `#00CFE5` |
-| Neutrals | `paper` | `#F9F9F9` Vedams White |
-| | `paper-alt` | `#F8F3EA` Vedams Light Orange |
-| | `ink` | `#1E1E1E` Vedams Solid Black |
-| | `grey` | `#A7A7A7` Vedams Light Grey |
-
-Type is **Inter** throughout, self-hosted via `next/font/google`. The `mono`
-slot maps to Inter with tabular figures rather than pulling in a second family,
-so calendar dates and counts still align in columns.
-
-> **Deviation from the brandbook:** the capsule specifies Outfit for
-> communications and Nunito Sans for documents. Inter is a deliberate override
-> for the Studio UI, chosen for legibility at small sizes in a dense table. The
-> brand colours and logo are unchanged.
-
-### The one rule worth knowing: violet on light, orange on dark
-
-Two brand colours fail WCAG AA as text and this is easy to get wrong:
-
-- **Vedams Orange is 2.50:1 on Vedams White.** It cannot be body text or a
-  button fill on a light surface. It is a *graphic* colour — the logo mark,
-  gradients, fills — and it is excellent as an accent **on dark** (7.25:1 on
-  Cetacean Blue).
-- **Vedams Light Grey is 2.29:1 on white** — borders and decoration only. The
-  readable greys (`ink-muted`, `ink-faint`) are derived from it.
-- Inversely, **Electric Violet is only 3.33:1 on Cetacean Blue**, so it is the
-  interactive colour on light surfaces and never the accent on dark.
-
-So: light surfaces get violet accents, dark surfaces (`.brand-night`, the CTA
-band, the active platform tab) get orange. `npm run check:contrast` asserts all
-of this against the real values parsed out of `globals.css`, including negative
-assertions that keep orange and light grey out of body text.
-
-### Dashboard shell
-
-The Studio is laid out as a soft-card dashboard: a lavender canvas
-(`--color-canvas`, a violet-tinted white derived from Electric Violet) with
-white cards floating on it via `.card` and the `shadow-card` / `shadow-tile`
-tokens. No hard borders on containers.
-
-- **Sidebar** ([components/studio/sidebar.tsx](components/studio/sidebar.tsx)) —
-  one entry per platform with a live post count and an electric-violet pill for
-  the active one, plus a gradient "Open Vedam on …" button pinned to the bottom.
-  Below `lg` it collapses into `MobilePlatformNav`, a scrollable pill row.
-- **Theme banner** ([theme-banner.tsx](components/studio/theme-banner.tsx)) —
-  the month's theme in the Vedams Gradient, answering three questions in order:
-  *what is the month about* (title + through-line), *what does that mean here*
-  (the platform's own angle, the one part that differs per tab), and *where do
-  we stand* (planned / shot / edited / live / still to go). The eyebrow carries
-  a time cue — "6 days left in August", "September starts in 6 days", or
-  "July is closed" — from `monthStatus` in
-  [lib/social/schedule.ts](lib/social/schedule.ts).
-
-  The theme *rationale* deliberately is not here. It explains why the theme was
-  chosen, which is reference material you read when deciding whether the plan is
-  right — so it sits under **Why this theme** inside the re-plan disclosure.
-- **Summary panel** sits directly under it — the month at a glance, since that
-  is what the team opens the tool for. Then the calendar, then re-planning.
-- **Weekly progress** ([charts.tsx](components/studio/charts.tsx)) — a
-  segmented bar per week showing how far it has got through shoot → edit →
-  live, with part-weeks labelled by their real length.
-
-  This replaced a posts-per-week chart. The scheduler spreads posts evenly by
-  construction, so that chart was flat every month and carried no information;
-  production progress is what actually varies and what the team needs to see.
-- **Up next** ([up-next.tsx](components/studio/up-next.tsx)) — the next six posts
-  that still need work, labelled *To shoot / To edit / Ready to post*.
-
-The page background is a flat lavender canvas. An earlier version had decorative
-swirls behind the content; they were removed for being distracting behind a
-data-dense table.
-
-### Colour-coded buckets
-
-Every content bucket owns a hue from the brand palette
-(`BUCKET_COLOR` in [lib/social/strategy.ts](lib/social/strategy.ts)). That
-colour appears as the row's left stripe, its chip, its dot in the summary, and
-its bar — so a month reads as a pattern rather than a wall of text, and a bucket
-running hot is visible without reading a single row.
-
-Chips and status pills tint their hue against the page with `color-mix` and put
-ink on top, which keeps them readable at any saturation.
-`npm run check:contrast` verifies every chip and pill, not just the base tokens.
-
-Formats and platforms carry emoji shorthand (`FORMAT_EMOJI`, `PLATFORM_EMOJI`)
-because that is how the team already talks about them.
-
-### Gradients
-
-`.brand-gradient-bg` and `.brand-gradient-text` render the Vedams Gradient
-(orange → mulberry → electric violet). `.brand-night` is the dark brand surface
-used for the hero wash and the CTA band.
-
-## Before launch
-
-- [ ] Replace placeholder copy, client names, and case studies in `lib/content.ts`
-- [ ] Swap the CSS gradient panels in `components/sections/work.tsx` for real
-      project imagery (`next/image`)
-- [ ] Give each case study its own route and link the cards to it
-- [ ] Set the real domain in `metadataBase` in `app/layout.tsx`
-- [ ] Add real social URLs in `components/site-footer.tsx`
-- [ ] Add an OG image (`app/opengraph-image.tsx`) and `favicon.ico`
-- [ ] Remove the unused Next.js/Vercel SVGs in `public/`
 
 ---
 
-# Content Studio (`/studio`)
+## Content: why sections are missing
+
+`lib/content/pending.ts` holds everything that depends on real-world facts —
+student projects, testimonials, statistics, social profile URLs, partners. **All
+of it is empty, and every section that reads it renders nothing while empty.**
+
+This is deliberate and load-bearing. The site previously shipped eight fictional
+client names, four fabricated case studies, an invented testimonial attributed
+by name and job title to a person who does not exist, and three unverifiable
+statistics — all rendering as fact. Deleting that data was not enough on its
+own, because the next person to fill those arrays would have faced the same
+choice: leave a section empty, or invent something. So the structure enforces
+the rule rather than a comment asking for it.
+
+There is no placeholder mode and no sample data. A section appears the moment it
+has real content, and not one commit before.
+
+```bash
+pnpm run check:content    # what is still hidden
+```
+
+Add a project to `projects` and both its card and its `/build/<slug>` page turn
+on. Add a testimonial and that section appears. Nothing else needs touching.
+
+---
+
+## Brand theme
+
+Tokens live in `app/globals.css`. The values below are the actual ones — the
+previous README table had drifted and documented `paper` as `#F9F9F9` when it is
+`#ffffff`, which meant a contributor trusting the docs used the wrong colours.
+
+| Token                | Value     | Use                                       |
+| -------------------- | --------- | ----------------------------------------- |
+| `--color-orange`     | `#f97d03` | Vedams Orange. Graphic + text **on dark** |
+| `--color-eviolet`    | `#8a18ff` | Electric Violet. Interactive **on light** |
+| `--color-violet`     | `#2b135c` | Vedams Violet. Dark surfaces, buttons     |
+| `--color-night`      | `#0c0931` | Cetacean Blue. Darkest surface            |
+| `--color-space`      | `#1d1856` | Space Cadet                               |
+| `--color-redpurple`  | `#e80074` | Red-Purple                                |
+| `--color-mulberry`   | `#c200db` | Vivid Mulberry                            |
+| `--color-turquoise`  | `#00cfe5` | Dark Turquoise                            |
+| `--color-canvas`     | `#f4f1fb` | Page background                           |
+| `--color-paper`      | `#ffffff` | Cards                                     |
+| `--color-paper-alt`  | `#f6f3fe` | Inset surfaces, inputs                    |
+| `--color-ink`        | `#1e1e1e` | Body text                                 |
+| `--color-ink-muted`  | `#5c5c66` | Secondary text                            |
+| `--color-ink-faint`  | `#6b6b75` | Tertiary text, labels                     |
+| `--color-rule`       | `#e6e3ec` | Borders                                   |
+| `--color-accent`     | `#8a18ff` | Interactive on light                      |
+| `--color-on-dark`    | `#f9f9f9` | Text on dark surfaces                     |
+| `--color-cream`      | `#f8f3ea` | **Reserved — currently unused**           |
+| `--color-grey`       | `#a7a7a7` | **Reserved — decorative only, never text**|
+
+### The one rule worth knowing: violet on light, orange on dark
+
+Vedams Orange is **2.50:1** on white. It fails WCAG AA as text or as a button
+fill on any light surface. It is a graphic colour — the logo mark, gradients,
+fills — and text only on dark, where it is 7.25:1 on Cetacean Blue. Electric
+Violet is the mirror image: 5.46:1 on light, and it fails at 3.33:1 on dark.
+
+`tests/contrast.test.ts` enforces both halves, and — unlike the original check —
+also scans component source for the failure mode itself. Checking only token
+pairs is why `text-orange` on a white card shipped and had to be found by hand.
+
+### Typefaces
+
+Outfit (display) and Nunito Sans (body) render the marketing site, per the
+brandbook. Inter is scoped to `/studio` via the `.studio-ui` class, where it
+earns its place on dense tabular UI at small sizes.
+
+This used to be a contradiction rather than a decision: a comment claimed Inter
+was "a deliberate override for the Studio UI" while the CSS mapped every font
+slot to Inter globally, so the entire marketing site silently rendered in the
+wrong typeface.
+
+---
+
+## Content Studio (`/studio`)
 
 An internal tool that plans the monthly social calendar and tracks each post
 through Shoot → Edit → Posted.
 
 **Each platform is its own calendar.** Instagram, LinkedIn, and YouTube are
-separate tabs — there is no merged table anywhere. Every number on the page
-(post counts, content-type split, bucket split, production progress) is scoped
-to the platform you are looking at, because a share of a combined 45-post total
-told you nothing useful about LinkedIn's 12.
+separate tabs — there is no merged table anywhere. Every number on the page is
+scoped to the platform you are looking at, because a share of a combined 45-post
+total told you nothing useful about LinkedIn's 12.
 
-## Setup
+### Authentication
+
+The Studio spends real money and mutates the calendar, so it sits behind a
+password. Two things are required in production, and the app refuses to serve
+rather than falling open without them:
+
+```
+STUDIO_PASSWORD          # 12+ characters
+STUDIO_SESSION_SECRET    # 32+ characters, stable across instances
+```
+
+Generate the secret with:
 
 ```bash
-cp .env.example .env.local   # add ANTHROPIC_API_KEY (and YOUTUBE_API_KEY)
-npm run check:keys           # verifies both keys before you spend a run
-pnpm dev                     # then open http://localhost:3000/studio
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-`check:keys` makes one tiny Anthropic call and one YouTube lookup, and tells you
-specifically what is wrong — key rejected, key fine but Data API v3 not enabled
-on the Google Cloud project, and so on. `.env.local` is gitignored.
+Sessions are stateless: an HMAC-SHA256-signed, httpOnly cookie carrying its own
+expiry, valid for 12 hours. There is no session store.
 
-**To get a fully real month, plan a month that has no calendar yet** (pick one
-from the month dropdown). *Re-plan* reuses the existing month's theme, so
-re-planning a seeded `[SAMPLE]` month keeps the sample theme.
+**Two layers, and both must fail for an unauthenticated request to do
+anything.** `proxy.ts` bounces browsers without a session, and
+`requireStudioSession()` runs at the top of every Server Action before the form
+is read. The second is the real boundary: Next.js documents that Server Actions
+are POSTs to the page route and that a matcher change can silently remove proxy
+coverage, so the route guard is a convenience only.
 
-A sample month is already seeded at `data/calendars/2026-09.json` so the
-dashboard renders before you have an API key. Re-seed any month with
-`npm run seed:sample -- 2026 10`.
+This authenticates *the team*, not individual people — anyone holding the
+password is indistinguishable from anyone else holding it. That is a deliberate
+trade for a small internal tool. If per-person attribution or revocation is ever
+needed, the move is a real identity provider, not more logic in `lib/auth`.
 
-## How the agent works
+---
 
-Generation is two stages, deliberately:
+## How the agent works, and what it costs
 
-1. **Theme** — one call decides what the month is *about*, given where it sits in
-   the Indian admissions calendar, plus a through-line every post ties back to.
-2. **Per platform** — three calls run in parallel, each planning that platform's
-   full month against its own audience and reach mechanics.
-
-The table columns mirror the team's sheet: Week, Day, Date, Bucket, Format,
-Topic, **Caption**, Shoot, Edit, Posted, Live Link. The caption cell is clamped
-to three lines so one long caption cannot blow out the row, with a **copy**
-button that puts the caption *and* its hashtags on the clipboard ready to paste.
-Clicking a topic expands the row for the full caption, the beat-by-beat script,
-the hook, the CTA, and the target keywords.
-
-**Re-planning is per platform.** Open the Instagram tab and you get *Re-plan
-Instagram* — one call, against the month's existing theme, showing only
-Instagram's research fields. LinkedIn and YouTube keep their content, their live
-links, and their ticked boxes. The re-planned platform's own rows are new
-content, so its Shoot / Edit / Posted marks reset. Planning a month from scratch
-still does all three at once, because that pass also decides the shared theme.
-
-**Dates are computed in code, not by the model** ([lib/social/schedule.ts](lib/social/schedule.ts)).
-The model gets a fixed list of slots to fill, which guarantees valid in-month
-dates, exact post counts, and a cadence the team can staff against.
-
-| Platform | Volume | Notes |
-| --- | --- | --- |
-| Instagram | 30 / month | Roughly daily |
-| LinkedIn | 30 / month | Roughly daily |
-| YouTube | 7 long-form + 20 shorts | 87 posts a month in total |
-
-**The 20 YouTube shorts are the Instagram reels, reposted.** The team shoots
-once. `repurposeReelsToShorts` in [lib/social/agent.ts](lib/social/agent.ts)
-takes that month's reels, keeps the video and the script verbatim, and rewrites
-only the title and description — because YouTube is a search surface and
-Instagram is a scroll surface. Shorts land on the same date as their source reel
-and are labelled *"Repost of the Instagram reel — no extra shoot"* in the table.
-
-That creates a dependency the re-plan respects: re-planning **Instagram** also
-re-derives its shorts, while re-planning **YouTube** touches only the 7
-long-form videos and leaves the shorts alone (`ownedBy` in
-[lib/social/merge.ts](lib/social/merge.ts), covered by `npm run check:merge`).
-
-### Captions are a different artefact on each platform
-
-`CAPTION_SPEC` in [lib/social/strategy.ts](lib/social/strategy.ts) tells the
-strategist what a caption actually *is* per platform, because one generic
-instruction produces the wrong thing twice out of three times:
-
-- **Instagram** — two lines and a CTA, under 300 characters
-- **LinkedIn** — 150-300 words, hook before the fold, short paragraphs, a real question at the end
-- **YouTube** — a full description with the keyword front-loaded, a timestamped chapter list, and the channel's SEO surface in mind
-
-Each platform is planned against **its own bucket mix**, not a shared one — the
-same bucket carries very different weight for a Class 12 student and a working
-engineer. The mixes live in `PLATFORM_BUCKET_MIX` and each sums to 100%:
-
-| Bucket | Instagram | LinkedIn | YouTube |
-| --- | --- | --- | --- |
-| Student Life | 20% | — | 12% |
-| Learn Tech | 18% | 10% | 22% |
-| Trend & Culture | 16% | — | — |
-| Proof & Outcomes | 12% | 16% | 11% |
-| Admissions & Program | 10% | — | 22% |
-| Community & UGC | 8% | — | — |
-| Faculty & Mentors | 6% | 16% | 8% |
-| Industry & Career | 6% | 24% | 25% |
-| Behind the Build | 4% | 10% | — |
-| Founder POV | — | 24% | — |
-
-A dash means that bucket is deliberately not planned on that platform, and the
-generator is told to use only that platform's buckets. If posts ever land in an
-unplanned bucket, the dashboard flags them **off-plan** rather than hiding them.
-
-Model: `claude-opus-5` with adaptive thinking and Zod-validated structured
-output, so a malformed plan fails loudly instead of writing garbage rows.
-
-**All generation calls stream.** The SDK estimates
-`60min × max_tokens / 128000` and refuses any *non-streaming* request projected
-to run over 10 minutes — anything above **21,333 max_tokens**. The platform
-calls use 32,000 (30 LinkedIn posts at 150-300 words each need the room), so
-they use `messages.stream(...)` + `await stream.finalMessage()`, which still
-returns `parsed_output` from the Zod schema. `npm run check:agent` asserts this
-statically, because the failure only surfaces at runtime on a real generation —
-an expensive place to find it. `npm run check:stream` proves the pattern
-end-to-end against the API for a fraction of a cent.
-
-### What a run costs
-
-Every generation prints a token breakdown to the server log, so the cost is
-measured rather than guessed:
+A full month is **five model calls**:
 
 ```
-[studio] 2026-10 — 5 call(s)
-  theme             1,240 in    2,980 out
-  instagram         2,110 in   12,400 out
-  linkedin          2,050 in   21,800 out
-  youtube           1,980 in    6,400 out
-  yt shorts         3,400 in    7,900 out
-  TOTAL            10,780 in   51,480 out  ≈ $1.34
+1 × theme          decides what the month is about
+3 × platform plan  Instagram, LinkedIn, YouTube — in parallel
+1 × repurpose      Instagram reels rewritten as YouTube Shorts
 ```
 
-One full month is **five calls covering all three platforms** — not five per
-platform. Re-planning a single platform is one call (two for Instagram, which
-also re-derives its shorts). LinkedIn is the most expensive platform because its
-captions are 150-300 words each.
+Re-planning a single platform is **one call** (two for Instagram, which
+re-derives its Shorts), because it reuses the existing month's theme.
 
-The dollar figure uses Claude Opus 5 list pricing and is an estimate for your
-own tracking; the Anthropic console is the source of truth.
+### Model tiering
 
-## The files you will actually edit
+Set per stage in `lib/ai/models.ts`, because the stages are genuinely different
+work:
 
-| File | What it controls |
-| --- | --- |
-| [lib/social/strategy.ts](lib/social/strategy.ts) | Brand voice, per-platform audience and objectives, the 10 content buckets, and `PLATFORM_BUCKET_MIX` — each platform's own target bucket split. **Edit this to change how every future month is planned** — it is the standing brief, not a per-run prompt. |
-| [lib/social/schedule.ts](lib/social/schedule.ts) | Posting cadence and which weekdays each platform posts on. |
-| [lib/social/agent.ts](lib/social/agent.ts) | The strategist system prompt and the two-stage generation flow. |
+| Stage           | Model              | Why                                        |
+| --------------- | ------------------ | ------------------------------------------ |
+| `theme`         | `claude-opus-5`    | One call; every other call is downstream    |
+| `platformPlan`  | `claude-sonnet-5`  | Three calls, most of the output tokens      |
+| `repurpose`     | `claude-haiku-4-5` | A rewrite of an already-fixed script        |
 
-## Channel + competitor research
+All three are overridable — `MODEL_THEME`, `MODEL_PLATFORM_PLAN`,
+`MODEL_REPURPOSE` — so the tiering can be measured rather than assumed. Set them
+all to the same model to see what it costs in quality.
 
-The generate form has a **research block per platform** — our handle, competitor
-handles, and a free-text "what's working" note. Each platform's research is fed
-into *that platform's* planning call only; a digest of all three informs the
-month theme. Everything is optional and never blocks generation.
+The tiers do not accept the same request: Haiku 4.5 rejects
+`output_config.effort` with a 400, and adaptive thinking is Claude 4.6+ only.
+`lib/ai/models.ts` encodes those facts and `lib/ai/call.ts` gates on them, which
+is what lets the pipeline stay one code path across three models.
+`pnpm run check:models` verifies the encoding against the live API.
 
-Where the research comes from differs by platform, because the APIs differ:
+### Prompt caching
 
-| Platform | Marked | How research is gathered |
-| --- | --- | --- |
-| YouTube | **Auto-fetched** | Data API v3 pulls recent videos, view counts, and recurring title keywords for you *and* each competitor. Free and generous. Needs `YOUTUBE_API_KEY`; skipped silently if unset. |
-| Instagram | **Manual** | The Graph API reads your own Business/Creator account but competitor access is limited to Business Discovery, and it needs a Meta app with a linked Facebook Page. Your typed notes are the input. |
-| LinkedIn | **Manual** | Organic analytics need an approved Marketing Developer Platform app plus Page admin rights, and there is **no supported API for reading a competitor's organic posts** — scraping breaks the User Agreement. Your typed notes are the only signal. |
+The strategist brief — brand, voice, content buckets, and the full platform
+playbook — is ~2,000 tokens and byte-identical on every call. It is marked
+cacheable, so after the first call it is billed at roughly a tenth of the input
+price.
 
-The form labels each platform Auto-fetched or Manual so nobody expects data that
-cannot be fetched. To wire up Instagram or LinkedIn later, implement
-`InsightProvider` in [lib/social/insights.ts](lib/social/insights.ts) — the
-stubs already sit behind that interface and the form already collects handles
-for them.
+Two things about this are worth knowing:
 
-## Data and its limits
+- **The playbook lives in the cached prefix, not in each user prompt.** Moving
+  it there was not tidying. At ~1,000 tokens the shared prefix fell *under*
+  Sonnet 5's 1,024-token minimum, and a `cache_control` marker below the minimum
+  is accepted and silently does nothing. The three platform calls would have
+  cached nothing at all.
+- **It breaks silently.** Any byte that varies between calls invalidates the
+  prefix, with no error and no visible symptom. So `tests/ai.test.ts` asserts
+  the prompt is byte-stable, contains nothing date- or run-derived, and stays
+  above the configured models' minimums; every run logs its cache hit rate and
+  warns at zero; and `check:models` verifies it end to end.
 
-Calendars are JSON files in `data/calendars/`, git-tracked so you get history and
-review for free. Two consequences:
+### Cost visibility and the budget ceiling
 
-- It works in `next dev` and on any Node host (Railway, Render, a VPS, Docker).
-  It does **not** work on Vercel or other read-only serverless filesystems.
-- Status updates are read-modify-write, so two people ticking boxes on the same
-  month in the same instant can drop one update.
+Every run reports what it spent, what the same work would have cost untiered and
+uncached, and how much of the prompt came from cache. This appears in the UI
+after a run and in the logs as one structured line.
 
-Both go away by implementing `CalendarStore` in
-[lib/social/storage.ts](lib/social/storage.ts) against Postgres and swapping the
-export at the bottom of that file. Nothing else in the app changes.
+`AI_MONTHLY_BUDGET_USD` is a hard ceiling on estimated spend per calendar month,
+checked before a run starts *and between calls within a run*, so a single run
+cannot overshoot by the size of its largest call. It is per-process by default;
+implement `BudgetStore` against a shared table to make it authoritative across
+instances.
 
-## Before anyone else uses this
+Prices in `lib/ai/models.ts` are list rates for operator visibility only, never
+used to bill anyone. `PRICING_VERIFIED_AT` records when they were last checked.
 
-- [ ] **`/studio` has no authentication.** The Server Actions in
-      `app/studio/actions.ts` are reachable by direct POST. Add an auth check to
-      each one before deploying anywhere public.
-- [ ] Replace the seeded `[SAMPLE]` month with real generated output
-- [ ] Move to Postgres if more than one person edits at a time
+---
 
-## Checks
+## Channel and competitor research
+
+Optional context fed into planning, per platform:
+
+- **YouTube** — auto-fetched when `YOUTUBE_API_KEY` is set: recent videos, view
+  counts, and recurring title keywords for your channel and each competitor.
+- **Instagram** — manual. The Graph API reads your own Business account, but
+  competitor access is limited to Business Discovery and needs a Meta app with a
+  linked Facebook Page.
+- **LinkedIn** — manual. Organic analytics need an approved Marketing Developer
+  Platform app, and there is no supported way to read a competitor's organic
+  posts at all. Scraping violates the User Agreement.
+
+The UI labels each platform Auto-fetched or Manual to match, so the gap is
+visible rather than a silent no-op. Research never blocks a run: a bad handle or
+a quota error is logged and planning continues.
+
+---
+
+## Storage
+
+Two adapters behind one `CalendarStore` interface. `DATABASE_URL` picks between
+them.
+
+**Postgres** (`DATABASE_URL` set) — what to run anywhere real. Items live in
+their own table, so ticking a production checkbox is a single-row `UPDATE`. That
+is the point: it removes the lost-update race entirely, and it is a prerequisite
+for more than one person editing at once or for any serverless host.
 
 ```bash
-npm run check          # scheduler + storage + platform merge + contrast
-npm run check:slots
-npm run check:storage
-npm run check:merge     # re-planning one platform must not touch the others
-npm run check:contrast  # brand palette stays readable
-npm run check:keys      # ANTHROPIC_API_KEY / YOUTUBE_API_KEY actually work
-npm run check:agent     # generation calls stream (no 10-minute timeout)
-npm run check:stream    # streaming + structured output against the real API
+pnpm run db:migrate      # applies lib/social/storage/schema.sql
 ```
+
+The app also applies the schema lazily on first use; every statement is
+idempotent.
+
+**JSON files** (`DATABASE_URL` unset) — zero setup, for local development and a
+single Node process. Two real defects were fixed rather than left in place:
+writes go through an atomic temp-file rename (no torn files if the process
+dies), and a per-month lock serialises read-modify-write cycles (no lost
+updates). Both are covered by tests, including 20 concurrent writes.
+
+Its limits are process-local, and stated plainly: it does not work on a
+read-only filesystem, and the lock protects one Node server and nothing more.
+
+Planned months are **not committed to the repo** — `data/calendars/*.json` is
+gitignored. Committing them is how two months of `[SAMPLE]` placeholder content,
+including one for a month that had already elapsed, came to sit in the repo
+rendering as if it were the team's real plan. There is no seed script: an
+unplanned month shows the "Plan this month" panel, which is the correct empty
+state and the actual entry point to the tool.
+
+---
+
+## Deploying
+
+```bash
+pnpm run check           # typecheck, lint, tests
+pnpm run check:env       # fails if the configuration is not safe to serve
+pnpm run build
+```
+
+`check:env` is fatal in production on: a missing or short `STUDIO_PASSWORD` or
+`STUDIO_SESSION_SECRET`, and a missing `NEXT_PUBLIC_SITE_URL`. It warns on a
+missing `DATABASE_URL` (falls back to a filesystem the host may not let you
+write to), a missing `ANTHROPIC_API_KEY` (calendars display but cannot be
+planned), and a missing budget ceiling.
+
+Security headers — `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`,
+`Permissions-Policy`, HSTS — are set in `next.config.ts`. HSTS is not preloaded:
+that is a one-way commitment for the whole domain and belongs to whoever owns
+DNS.
+
+---
+
+## Still to do before launch
+
+Everything below is content or credentials only Vedam can supply. None of it is
+code, and none of it renders as a placeholder in the meantime.
+
+- [ ] Real student/studio projects in `lib/content/pending.ts` → turns on the
+      Build section and its `/build/<slug>` pages
+- [ ] A real testimonial, from someone who agreed to be quoted
+- [ ] Sourced statistics for the hero strip (each one requires a stated source)
+- [ ] Vedam's actual social profile URLs → footer links
+- [ ] `VEDAM_INSTAGRAM_URL` / `VEDAM_LINKEDIN_URL` / `VEDAM_YOUTUBE_URL` → the
+      Studio's "open our channel" links, which stay hidden until then
+- [ ] Set `NEXT_PUBLIC_SITE_URL` to the real production domain
+- [ ] Project imagery — `ProjectPanel` already handles `next/image` with `fill`
+      inside the `aspect-4/3` wrapper, so adding photos introduces no layout shift
+- [ ] Plan a real month in the Studio (there is no seeded sample month)

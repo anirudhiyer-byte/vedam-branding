@@ -1,26 +1,43 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { nav, site } from "@/lib/content";
 import { Container } from "@/components/container";
 import { Wordmark } from "@/components/wordmark";
+import { CtaLink } from "@/components/ui/button";
 
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
+
+  // An open menu that survives a resize to desktop leaves an orphaned panel
+  // over the page, and Escape is the expected way out of any overlay.
+  useEffect(() => {
+    if (!open) return;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    const media = window.matchMedia("(min-width: 768px)");
+    const onChange = () => media.matches && setOpen(false);
+
+    document.addEventListener("keydown", onKeyDown);
+    media.addEventListener("change", onChange);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      media.removeEventListener("change", onChange);
+    };
+  }, [open]);
 
   return (
     <header className="sticky top-0 z-50 border-b border-rule bg-paper/85 backdrop-blur-md">
       <Container>
         <div className="flex h-16 items-center justify-between md:h-20">
-          <Link href="/" aria-label={`${site.name}, home`}>
+          <Link href="/" aria-label={`${site.fullName}, home`}>
             <Wordmark />
           </Link>
 
-          <nav
-            aria-label="Primary"
-            className="hidden items-center gap-9 md:flex"
-          >
+          <nav aria-label="Primary" className="hidden items-center gap-9 md:flex">
             {nav.map((item) => (
               <Link
                 key={item.href}
@@ -30,24 +47,22 @@ export function SiteHeader() {
                 {item.label}
               </Link>
             ))}
-            <Link
-              href="#contact"
-              className="rounded-full bg-violet px-5 py-2.5 text-sm font-medium text-on-dark transition-colors hover:bg-eviolet"
-            >
-              Start a project
-            </Link>
+            {/* One canonical CTA style, shared with the hero and mobile menu. */}
+            <CtaLink href="#admissions" size="sm">
+              Apply
+            </CtaLink>
           </nav>
 
+          {/* p-3 around a 22px icon clears the 44×44px minimum touch target
+              (WCAG 2.5.5); the previous p-2 gave a ~38px box. */}
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
             aria-expanded={open}
             aria-controls="mobile-nav"
-            className="-mr-2 p-2 md:hidden"
+            className="-mr-3 p-3 md:hidden"
           >
-            <span className="sr-only">
-              {open ? "Close menu" : "Open menu"}
-            </span>
+            <span className="sr-only">{open ? "Close menu" : "Open menu"}</span>
             <svg
               width="22"
               height="22"
@@ -55,6 +70,7 @@ export function SiteHeader() {
               fill="none"
               stroke="currentColor"
               strokeWidth="1.5"
+              strokeLinecap="round"
               aria-hidden="true"
             >
               {open ? (
@@ -90,13 +106,15 @@ export function SiteHeader() {
                 {item.label}
               </Link>
             ))}
-            <Link
-              href="#contact"
-              onClick={() => setOpen(false)}
-              className="py-4 font-display text-2xl text-accent"
-            >
-              Start a project
-            </Link>
+            <div className="py-4">
+              <CtaLink
+                href="#admissions"
+                onClick={() => setOpen(false)}
+                className="w-full"
+              >
+                Apply
+              </CtaLink>
+            </div>
           </Container>
         </nav>
       )}

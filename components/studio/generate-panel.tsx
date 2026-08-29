@@ -4,12 +4,12 @@ import { useActionState } from "react";
 import {
   generateMonth,
   replanPlatform,
-  type GenerateState,
+  type ActionState,
 } from "@/app/studio/actions";
 import { PLATFORM_LABEL } from "@/lib/social/strategy";
 import { PLATFORMS, type Platform } from "@/lib/social/types";
 
-const initial: GenerateState = {};
+const initial: ActionState = {};
 
 /**
  * Per-platform research fields. `autoFetch` reflects what the APIs actually
@@ -181,10 +181,29 @@ export function GeneratePanel({
       {state.error && (
         <p
           role="alert"
-          className="mt-4 rounded-md border border-accent/40 bg-accent-soft px-3 py-2 text-sm"
+          className="mt-4 rounded-xl border border-accent/40 bg-accent-soft px-3.5 py-2.5 text-sm"
         >
           {state.error}
         </p>
+      )}
+
+      {/* What the run actually cost. Model spend is otherwise invisible until
+          the invoice arrives, which is exactly when it is too late to react. */}
+      {state.ok && state.summary && (
+        <div
+          role="status"
+          className="mt-4 rounded-xl border border-rule bg-paper-alt px-3.5 py-2.5 text-sm"
+        >
+          <p className="font-semibold">Planned in {Math.round(state.summary.durationMs / 1000)}s.</p>
+          <p className="mt-1 text-xs text-ink-muted">
+            {state.summary.calls} model call
+            {state.summary.calls === 1 ? "" : "s"} · about $
+            {state.summary.costUsd.toFixed(2)} · {state.summary.cacheHitRate}% of
+            the prompt served from cache ·{" "}
+            {state.summary.savedPercent}% cheaper than running every call
+            uncached on the top tier.
+          </p>
+        </div>
       )}
 
       <button

@@ -90,8 +90,11 @@ export function WeeklyProgress({
                 })}
               </div>
 
+              {/* Electric Violet, not Vedams Orange: orange is 2.50:1 on a
+                  white card and fails WCAG AA for text. See the contrast rule
+                  in globals.css — violet on light, orange on dark. */}
               {pct === 100 && (
-                <span className="mt-1 block text-[0.625rem] font-bold text-orange">
+                <span className="mt-1 block text-[0.625rem] font-bold text-accent">
                   Week complete
                 </span>
               )}

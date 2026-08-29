@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A new push to the same branch makes the in-flight run irrelevant.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # --frozen-lockfile fails if pnpm-lock.yaml and package.json disagree,
+      # which is the point of committing a lockfile at all.
+      - run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Lint
+        run: pnpm run lint
+
+      # No network, no API keys, no database — the whole suite runs offline.
+      - name: Test
+        run: pnpm run test
+
+      - name: Build
+        run: pnpm run build
+        env:
+          NEXT_PUBLIC_SITE_URL: https://example.com
+
+      # Reports which content sections are still hidden. Informational: an
+      # unfinished pre-launch site is a normal state, not a failure.
+      - name: Content readiness
+        run: pnpm run check:content

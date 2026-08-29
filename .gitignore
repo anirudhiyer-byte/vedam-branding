@@ -42,3 +42,9 @@ next-env.d.ts
 
 # keep the template committed
 !.env.example
+
+# Calendar data written by the JSON store. Real planned months are operational
+# data, not source: they are large, they change constantly, and committing them
+# was how two months of `[SAMPLE]` placeholder content ended up in the repo
+# rendering as if it were the team's actual plan.
+/data/calendars/*.json

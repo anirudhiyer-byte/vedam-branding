@@ -1,52 +1,16 @@
 import Link from "next/link";
-import { PLATFORM_LABEL, PLATFORM_URL } from "@/lib/social/strategy";
+import { PLATFORM_LABEL, platformUrl } from "@/lib/social/strategy";
 import { PLATFORMS, type Platform } from "@/lib/social/types";
 import { Wordmark } from "@/components/wordmark";
+import { SignOutButton } from "./sign-out-button";
+import { Icon, type IconName } from "./icons";
 
-function Icon({ name }: { name: Platform | "home" | "out" }) {
-  const common = {
-    fill: "none",
-    stroke: "currentColor",
-    strokeWidth: 1.8,
-    strokeLinecap: "round" as const,
-    strokeLinejoin: "round" as const,
-  };
-  if (name === "instagram")
-    return (
-      <svg viewBox="0 0 24 24" className="size-5" {...common}>
-        <rect x="3" y="3" width="18" height="18" rx="5" />
-        <circle cx="12" cy="12" r="4" />
-        <circle cx="17.2" cy="6.8" r="1" fill="currentColor" stroke="none" />
-      </svg>
-    );
-  if (name === "linkedin")
-    return (
-      <svg viewBox="0 0 24 24" className="size-5" {...common}>
-        <rect x="3" y="3" width="18" height="18" rx="4" />
-        <path d="M8 10.5V17M8 7.5v.01M12 17v-3.6a2.4 2.4 0 0 1 4.8 0V17" />
-      </svg>
-    );
-  if (name === "youtube")
-    return (
-      <svg viewBox="0 0 24 24" className="size-5" {...common}>
-        <rect x="2.5" y="5.5" width="19" height="13" rx="4" />
-        <path d="M10.5 9.5 15 12l-4.5 2.5z" />
-      </svg>
-    );
-  if (name === "out")
-    return (
-      <svg viewBox="0 0 24 24" className="size-5" {...common}>
-        <path d="M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5" />
-        <path d="M10 17 5 12l5-5M5 12h11" />
-      </svg>
-    );
-  return (
-    <svg viewBox="0 0 24 24" className="size-5" {...common}>
-      <path d="m3 10 9-7 9 7v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-      <path d="M9 21v-7h6v7" />
-    </svg>
-  );
-}
+/** Platform tabs use the shared stroke-SVG set, not a second local copy. */
+const PLATFORM_ICON: Record<Platform, IconName> = {
+  instagram: "instagram",
+  linkedin: "linkedin",
+  youtube: "youtube",
+};
 
 export function Sidebar({
   active,
@@ -59,6 +23,8 @@ export function Sidebar({
   month: number;
   counts: Record<Platform, number>;
 }) {
+  const activeUrl = platformUrl(active);
+
   return (
     <aside className="card sticky top-4 hidden h-[calc(100dvh-2rem)] w-64 shrink-0 flex-col p-5 lg:flex">
       <Link href="/" className="px-2 text-ink">
@@ -80,7 +46,7 @@ export function Sidebar({
                   : "text-ink-muted hover:bg-paper-alt hover:text-ink"
               }`}
             >
-              <Icon name={p} />
+              <Icon name={PLATFORM_ICON[p]} className="size-5" />
               <span className="flex-1">{PLATFORM_LABEL[p]}</span>
               <span
                 className={`rounded-full px-2 py-0.5 text-[0.6875rem] tabular-nums ${
@@ -94,21 +60,26 @@ export function Sidebar({
         })}
       </nav>
 
-      <div className="mt-auto">
-        <a
-          href={PLATFORM_URL[active]}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="brand-gradient-bg flex items-center gap-3 rounded-2xl p-4 text-on-dark shadow-tile transition-transform hover:-translate-y-0.5"
-        >
-          <Icon name="out" />
-          <span className="text-sm leading-tight font-bold">
-            Open Vedam
-            <span className="block text-xs font-medium opacity-85">
-              on {PLATFORM_LABEL[active]}
+      <div className="mt-auto space-y-2">
+        {/* Rendered only once the real profile URL is configured — see
+            lib/social/strategy/links.ts for why there is no default. */}
+        {activeUrl && (
+          <a
+            href={activeUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="brand-gradient-bg flex items-center gap-3 rounded-2xl p-4 text-on-dark shadow-tile transition-transform hover:-translate-y-0.5"
+          >
+            <Icon name="external" className="size-5" />
+            <span className="text-sm leading-tight font-bold">
+              Open Vedam
+              <span className="block text-xs font-medium opacity-85">
+                on {PLATFORM_LABEL[active]}
+              </span>
             </span>
-          </span>
-        </a>
+          </a>
+        )}
+        <SignOutButton />
       </div>
     </aside>
   );
@@ -144,7 +115,7 @@ export function MobilePlatformNav({
                 : "text-ink-muted hover:bg-paper-alt hover:text-ink"
             }`}
           >
-            <Icon name={p} />
+            <Icon name={PLATFORM_ICON[p]} className="size-5" />
             {PLATFORM_LABEL[p]}
             <span
               className={`rounded-full px-1.5 text-[0.6875rem] tabular-nums ${
