@@ -30,9 +30,14 @@
   --color-canvas: #f4f1fb;
   --color-paper: #ffffff;
   --color-paper-alt: #f6f3fe;
-  --color-cream: #f8f3ea;
   --color-ink: #1e1e1e;
-  --color-grey: #a7a7a7;
+
+  /* RESERVED — brandbook colours with no current usage. Kept because they are
+     part of the palette, named here so a contributor scanning the design
+     system can see they are unused rather than assuming they are wired up.
+     Vedams Light Grey is 2.29:1 on white: decorative only, never text. */
+  --color-cream: #f8f3ea;  /* reserved: warm alternate surface */
+  --color-grey: #a7a7a7;   /* reserved: decorative rules and dividers only */
 
   /* Soft, wide, violet-tinted shadows — no hard borders on cards. */
   --shadow-card: 0 2px 16px -4px rgb(43 19 92 / 0.08), 0 1px 3px rgb(43 19 92 / 0.04);
@@ -76,24 +81,40 @@
 }
 
 @theme inline {
-  /* Inter across the board. The "mono" slot is Inter with tabular figures
-     rather than a second family, so digits still align in the calendar. */
-  --font-display: var(--font-inter);
-  --font-sans: var(--font-inter);
-  --font-mono: var(--font-inter);
+  /* The brandbook typefaces: Outfit for display, Nunito Sans for body. The
+     "mono" slot is Nunito Sans with tabular figures rather than a second
+     family, so digits still align without loading a third font.
+
+     The Studio overrides all three to Inter via `.studio-ui` below — a scoped,
+     deliberate exception for dense tabular UI at small sizes, not the
+     site-wide default it used to silently be. */
+  --font-display: var(--font-outfit);
+  --font-sans: var(--font-nunito-sans);
+  --font-mono: var(--font-nunito-sans);
 }
 
 @layer base {
   body {
     background-color: var(--color-canvas);
     color: var(--color-ink);
-    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+    font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+    font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
     letter-spacing: -0.015em;
+  }
+
+  /* The Studio's scoped typeface override. Applied to the /studio layout only.
+     Redeclaring the variables here re-points every consumer of --font-display
+     and --font-sans inside this subtree, so no Studio component needs to know
+     about it. */
+  .studio-ui {
+    --font-display: var(--font-inter);
+    --font-sans: var(--font-inter);
+    --font-mono: var(--font-inter);
+    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   }
 
   /* Dates and counts must line up column to column. */
@@ -122,7 +143,7 @@
 
   /* Micro label above section headings. */
   .eyebrow {
-    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+    font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
     font-size: 0.6875rem;
     font-weight: 500;
     letter-spacing: 0.18em;

@@ -7,31 +7,39 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "seed:sample": "node --experimental-strip-types --no-warnings scripts/seed-sample.ts",
-    "check:slots": "node --experimental-strip-types --no-warnings scripts/check-slots.ts",
-    "check:storage": "node --experimental-strip-types --no-warnings scripts/check-storage.ts",
-    "check": "npm run check:slots && npm run check:storage && npm run check:merge && npm run check:contrast && npm run check:agent",
-    "check:merge": "node --experimental-strip-types --no-warnings scripts/check-merge.ts",
-    "check:contrast": "node --experimental-strip-types --no-warnings scripts/check-contrast.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "pnpm run typecheck && pnpm run lint && pnpm run test",
+    "check:content": "node --experimental-strip-types --no-warnings scripts/check-content.ts",
+    "check:env": "node --env-file-if-exists=.env.local --experimental-strip-types --no-warnings scripts/check-env.ts",
     "check:keys": "node --env-file=.env.local --experimental-strip-types --no-warnings scripts/check-keys.ts",
-    "check:agent": "node --experimental-strip-types --no-warnings scripts/check-agent.ts",
-    "check:stream": "node --env-file=.env.local --experimental-strip-types --no-warnings scripts/check-stream.ts"
+    "check:models": "node --env-file=.env.local --experimental-strip-types --no-warnings scripts/check-models.ts",
+    "db:migrate": "node --env-file=.env.local --experimental-strip-types --no-warnings scripts/migrate.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.120.0",
     "next": "16.3.2",
+    "pg": "^8.23.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "server-only": "^0.0.1",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.2",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.11"
+  },
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=22"
   }
 }

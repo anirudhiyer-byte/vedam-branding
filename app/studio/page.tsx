@@ -6,12 +6,13 @@ import { MobilePlatformNav, Sidebar } from "@/components/studio/sidebar";
 import { SummaryPanel } from "@/components/studio/summary-panel";
 import { ThemeBanner } from "@/components/studio/theme-banner";
 import { UpNext } from "@/components/studio/up-next";
+import { requireStudioSession } from "@/lib/auth/guard";
 import { store } from "@/lib/social/storage";
 import { itemsFor, summarisePlatform } from "@/lib/social/summary";
 import { PLATFORM_LABEL, PLATFORM_STRATEGY } from "@/lib/social/strategy";
 import { PLATFORMS, type Platform } from "@/lib/social/types";
 
-// Reads the filesystem and must reflect writes immediately.
+// Reads storage and a session cookie, and must reflect writes immediately.
 export const dynamic = "force-dynamic";
 
 function monthLabel(year: number, month: number) {
@@ -22,6 +23,11 @@ function monthLabel(year: number, month: number) {
 }
 
 export default async function StudioPage(props: PageProps<"/studio">) {
+  // The proxy guard already redirects unauthenticated browsers, but this page
+  // must not depend on it: proxy coverage is a matcher away from silently
+  // disappearing, and this is the page that renders the whole calendar.
+  await requireStudioSession();
+
   const sp = await props.searchParams;
   const now = new Date();
 

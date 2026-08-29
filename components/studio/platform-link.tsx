@@ -1,31 +1,32 @@
-import { PLATFORM_LABEL, PLATFORM_URL } from "@/lib/social/strategy";
+import { PLATFORM_LABEL, platformUrl } from "@/lib/social/strategy";
 import type { Platform } from "@/lib/social/types";
+import { Icon } from "./icons";
 
-/** Opens Vedam's actual profile on the platform you're looking at. */
+/**
+ * Opens Vedam's actual profile on the platform you're looking at.
+ *
+ * Renders nothing when the URL is not configured. The previous version shipped
+ * plausible-looking guesses at the handles, which meant the button always
+ * worked and sometimes went somewhere that is not ours. An absent button is
+ * the honest state until the real handle is set — see lib/social/strategy/links.
+ */
 export function PlatformLink({ platform }: { platform: Platform }) {
-  const name = PLATFORM_LABEL[platform];
+  const href = platformUrl(platform);
+  if (!href) return null;
 
   return (
     <a
-      href={PLATFORM_URL[platform]}
+      href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="group inline-flex items-center gap-2.5 rounded-full border border-rule bg-paper px-4 py-2 text-sm font-bold transition-all hover:-translate-y-0.5 hover:border-accent hover:text-accent hover:shadow-md"
+      className="group inline-flex min-h-11 items-center gap-2.5 rounded-full border border-rule bg-paper px-4 py-2 text-sm font-bold transition-all hover:-translate-y-0.5 hover:border-accent hover:text-accent hover:shadow-md"
     >
-      Open Vedam on {name}
-      <svg
-        viewBox="0 0 16 16"
-        aria-hidden="true"
+      Open Vedam on {PLATFORM_LABEL[platform]}
+      <Icon
+        name="external"
         className="size-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M5 11 11 5" />
-        <path d="M6 5h5v5" />
-      </svg>
+        strokeWidth={2}
+      />
     </a>
   );
 }

@@ -1,20 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { BUCKET_COLOR, BUCKET_LABEL, FORMAT_LABEL } from "@/lib/social/strategy";
+import {
+  BUCKET_COLOR,
+  BUCKET_LABEL,
+  FORMAT_LABEL,
+  bucketChipStyle,
+} from "@/lib/social/strategy";
 import type { ContentItem } from "@/lib/social/types";
 import { StatusToggle } from "./status-toggle";
 import { LiveLinkCell } from "./live-link-cell";
+import { Icon } from "./icons";
 
 function BucketChip({ bucket }: { bucket: ContentItem["bucket"] }) {
   const color = BUCKET_COLOR[bucket];
   return (
     <span
       // Tinted against the page so ink text stays readable on every hue.
-      style={{
-        backgroundColor: `color-mix(in oklab, ${color} 16%, var(--color-paper))`,
-        borderColor: `color-mix(in oklab, ${color} 45%, var(--color-paper))`,
-      }}
+      style={bucketChipStyle(bucket)}
       className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold whitespace-nowrap text-ink"
     >
       <span
@@ -62,7 +65,10 @@ function CopyButton({ text, label }: { text: string; label: string }) {
         }
         setTimeout(() => setState("idle"), 1600);
       }}
-      className="rounded border border-rule px-1.5 py-0.5 font-mono text-[0.625rem] text-ink-faint transition-colors hover:border-ink hover:text-ink"
+      // rounded-full, matching every other small inline control in a row.
+      // This was the one `rounded` (4px) button sitting beside pill-shaped
+      // chips and toggles, and it read as a different design system.
+      className="inline-flex min-h-8 items-center rounded-full border border-rule px-2.5 py-1 font-mono text-[0.625rem] text-ink-faint transition-colors hover:border-ink hover:text-ink"
     >
       {state === "done" ? "copied" : state === "failed" ? "blocked" : "copy"}
     </button>
@@ -206,8 +212,13 @@ export function CalendarTable({
                     className="group/topic text-left font-bold transition-colors hover:text-accent"
                   >
                     {item.topic}
-                    <span className="ml-2 inline-flex items-center rounded-full border border-rule px-1.5 py-0.5 font-mono text-[0.5625rem] text-ink-faint transition-colors group-hover/topic:border-accent group-hover/topic:text-accent">
-                      {isOpen ? "▲ hide" : "▼ open"}
+                    <span className="ml-2 inline-flex items-center gap-1 rounded-full border border-rule px-1.5 py-0.5 font-mono text-[0.5625rem] text-ink-faint transition-colors group-hover/topic:border-accent group-hover/topic:text-accent">
+                      <Icon
+                        name={isOpen ? "chevron-up" : "chevron-down"}
+                        className="size-2.5"
+                        strokeWidth={2.5}
+                      />
+                      {isOpen ? "hide" : "open"}
                     </span>
                   </button>
                   {item.derivedFrom && (

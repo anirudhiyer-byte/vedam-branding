@@ -24,8 +24,14 @@ export function MonthPicker({
   const go = (y: number, m: number) =>
     router.push(`/studio?y=${y}&m=${m}&p=${platform}`);
 
+  // No local focus override: the global `:focus-visible` rule in globals.css
+  // sets a 2px Electric Violet outline with a 3px offset. The previous
+  // `focus:outline-accent` here fired on mouse clicks too and set only the
+  // colour, so this was the one control in the app with a different focus ring.
+  // `min-w-0` is the shrink fallback for longer month names if MONTHS is ever
+  // localised.
   const selectClass =
-    "card cursor-pointer px-4 py-2.5 text-sm font-bold focus:outline-accent";
+    "card min-w-0 cursor-pointer rounded-xl px-4 py-2.5 text-sm font-bold";
 
   return (
     <div className="flex flex-wrap items-center gap-2">

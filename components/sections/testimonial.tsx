@@ -1,26 +1,35 @@
-import { testimonial } from "@/lib/content";
+import { testimonials } from "@/lib/content";
 import { Container } from "@/components/container";
 
-export function Testimonial() {
+/**
+ * Quotes from people who agreed to be quoted.
+ *
+ * Renders nothing while `testimonials` is empty. It previously carried a
+ * fabricated quote attributed by name and job title to a person who does not
+ * exist — the most directly misleading content on the page.
+ */
+export function Testimonials() {
+  if (testimonials.length === 0) return null;
+
   return (
-    <section
-      id="studio"
-      className="scroll-mt-20 border-b border-rule bg-paper-alt py-20 md:py-28"
-    >
+    <section className="border-b border-rule py-20 md:py-28">
       <Container>
-        <figure className="mx-auto max-w-3xl text-center">
-          <span aria-hidden="true" className="font-display text-5xl text-accent">
-            &ldquo;
-          </span>
-          <blockquote className="mt-2 font-display text-2xl leading-snug tracking-tight text-balance md:text-4xl">
-            {testimonial.quote}
-          </blockquote>
-          <figcaption className="mt-8 text-sm text-ink-muted">
-            <span className="font-medium text-ink">{testimonial.name}</span>
-            <span className="mx-2 text-ink-faint">/</span>
-            {testimonial.role}
-          </figcaption>
-        </figure>
+        <ul className="grid gap-12 md:grid-cols-2">
+          {testimonials.map((item) => (
+            <li key={`${item.name}-${item.role}`}>
+              <figure>
+                <blockquote className="max-w-2xl font-display text-2xl leading-snug tracking-tight text-balance md:text-3xl">
+                  &ldquo;{item.quote}&rdquo;
+                </blockquote>
+                <figcaption className="mt-6 text-sm text-ink-muted">
+                  <span className="font-medium text-ink">{item.name}</span>
+                  {" — "}
+                  {item.role}
+                </figcaption>
+              </figure>
+            </li>
+          ))}
+        </ul>
       </Container>
     </section>
   );
