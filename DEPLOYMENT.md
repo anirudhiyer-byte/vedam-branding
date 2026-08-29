@@ -55,9 +55,16 @@ you cannot account for.
 ## 2. Attach a Postgres database
 
 **This is required for the Studio.** Vercel runs the app on a read-only
-filesystem, so the JSON storage adapter physically cannot write there. Without
-`DATABASE_URL` the app refuses to boot in production and says so, rather than
-letting you spend a few dollars planning a month and then losing it on save.
+filesystem, so the JSON storage adapter physically cannot write there.
+
+Without `DATABASE_URL`, the marketing site is unaffected and the Studio still
+signs you in — but the moment you press "Plan this month" it checks that storage
+is writable, fails that check, and stops **before making any model calls**. You
+get a message naming the fix and a bill of zero, instead of paying for five
+calls and losing the result on save.
+
+`pnpm run check:env` reports the same problem as fatal when it detects Vercel,
+so a deploy pipeline can catch it earlier.
 
 Fastest route:
 
