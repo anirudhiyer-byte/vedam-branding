@@ -32,7 +32,7 @@ The marketing site works with no configuration at all. The Studio needs
 
 ```bash
 pnpm run check           # typecheck + lint + tests. No network, no keys, no DB.
-pnpm test                # 120 tests
+pnpm test                # the full suite
 pnpm run check:env       # configuration pre-flight — run before a deploy
 pnpm run check:content   # which content sections are still hidden, and why
 ```
@@ -101,7 +101,7 @@ lib/
     insights/              channel + competitor research
     storage/               Postgres and JSON adapters
 
-tests/                     120 tests, all offline
+tests/                     the test suite, all offline
 ```
 
 ---
